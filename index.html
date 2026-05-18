@@ -7,10 +7,9 @@
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #1e1e2f; color: #fff; margin: 0; padding: 20px; text-align: center; }
         .container { max-width: 1300px; margin: auto; background: #2a2a40; padding: 20px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
         .top-bar { display: flex; gap: 10px; justify-content: center; margin-bottom: 20px; }
-        input[type="text"] { width: 400px; padding: 10px; font-size: 16px; border-radius: 5px; border: 1px solid #444; background: #1e1e2f; color: white; }
-        button { padding: 10px 20px; font-size: 16px; font-weight: bold; cursor: pointer; border: none; border-radius: 5px; color: white; transition: 0.3s; }
-        .btn-connect { background-color: #007bff; }
-        .btn-connect:hover { background-color: #0056b3; }
+        button { padding: 12px 30px; font-size: 16px; font-weight: bold; cursor: pointer; border: none; border-radius: 5px; color: white; transition: 0.3s; }
+        .btn-connect { background-color: #007bff; font-size: 18px; }
+        .btn-connect:hover { background-color: #0056b3; transform: scale(1.02); }
         .btn-ticket { background-color: #ffc107; color: black; font-size: 20px; padding: 15px 30px; width: 100%; border-radius: 10px;}
         .btn-ticket:hover { background-color: #e0a800; transform: scale(1.02); }
         .main-content { display: flex; gap: 20px; align-items: flex-start; justify-content: center; }
@@ -26,13 +25,12 @@
     <h1>🚗 Pusat Kendali Smart Parking</h1>
     
     <div class="top-bar">
-        <input type="text" id="apiUrl" placeholder="Masukkan URL Ngrok (https://xxx.ngrok-free.dev)">
-        <button class="btn-connect" onclick="hubungkanVideo()">Sambungkan CCTV</button>
+        <button class="btn-connect" onclick="hubungkanVideo()">🔌 Sambungkan Koneksi CCTV</button>
     </div>
 
     <div class="main-content">
         <div class="video-container">
-            <span id="placeholderText">Menunggu koneksi Ngrok...</span>
+            <span id="placeholderText">Menunggu koneksi ke server...</span>
             <img id="videoStream" alt="Live CCTV Stream">
         </div>
 
@@ -46,28 +44,30 @@
 </div>
 
 <script>
-    let baseUrl = "";
+    // URL Ngrok statis Anda sudah langsung dikunci di sini
+    const baseUrl = "https://paralyses-cruelness-disengage.ngrok-free.dev";
+    let isConnected = false;
 
     function hubungkanVideo() {
-        baseUrl = document.getElementById('apiUrl').value.replace(/\/$/, "");
-        if (!baseUrl) { alert("Masukkan URL Ngrok terlebih dahulu!"); return; }
-        
-        // Memunculkan video dengan mengganti sumber (src) gambar ke endpoint streaming
+        // Mengarahkan sumber gambar langsung ke endpoint video feed di Colab
         const imgStream = document.getElementById('videoStream');
         const placeholder = document.getElementById('placeholderText');
         
         imgStream.src = `${baseUrl}/video_feed`;
         imgStream.style.display = "block";
         placeholder.style.display = "none";
+        isConnected = true;
+        
+        console.log("Mencoba menyambungkan ke stream: " + baseUrl);
     }
 
     async function cetakTiket() {
-        if (!baseUrl) { alert("Sambungkan CCTV terlebih dahulu!"); return; }
+        if (!isConnected) { alert("Sambungkan koneksi CCTV terlebih dahulu!"); return; }
         const tiketContainer = document.getElementById('tiketResult');
         tiketContainer.innerHTML = "<i>Memproses gerbang masuk...</i>";
 
         try {
-            // Memanggil endpoint cetak tiket
+            // Memanggil endpoint cetak tiket pada backend Colab
             const response = await fetch(`${baseUrl}/cetak_tiket`, { method: "POST" });
             const data = await response.json();
 
@@ -85,7 +85,7 @@
                 `;
             }
         } catch (error) {
-            tiketContainer.innerHTML = `<p style="color:red;">Error: Gagal terhubung ke server.</p>`;
+            tiketContainer.innerHTML = `<p style="color:red;">Error: Gagal terhubung ke server.<br><small>Pastikan backend Colab Anda sedang berjalan.</small></p>`;
         }
     }
 </script>
