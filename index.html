@@ -2,61 +2,113 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Pusat Kendali Multi-CCTV Smart Parking</title>
+    <title>Pusat Kendali Multi-CCTV & Cetak Tiket</title>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #11111e; color: #fff; margin: 0; padding: 20px; text-align: center; }
-        .container { max-width: 1400px; margin: auto; background: #1e1e2f; padding: 20px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.7); }
-        .btn-connect { background-color: #28a745; padding: 12px 30px; font-size: 18px; font-weight: bold; cursor: pointer; border: none; border-radius: 6px; color: white; margin-bottom: 25px; transition: 0.3s; }
+        .container { max-width: 1450px; margin: auto; background: #1e1e2f; padding: 25px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.7); }
+        
+        .top-bar { display: flex; gap: 15px; justify-content: center; margin-bottom: 25px; }
+        button { padding: 14px 35px; font-size: 16px; font-weight: bold; cursor: pointer; border: none; border-radius: 6px; color: white; transition: 0.3s; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
+        .btn-connect { background-color: #28a745; }
         .btn-connect:hover { background-color: #218838; transform: scale(1.02); }
+        .btn-ticket { background-color: #ffc107; color: black; font-size: 18px; }
+        .btn-ticket:hover { background-color: #e0a800; transform: scale(1.02); }
         
-        /* Mengatur susunan Grid Monitor CCTV bersebelahan */
-        .cctv-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-top: 10px; }
+        .main-layout { display: flex; gap: 25px; align-items: flex-start; margin-top: 10px; }
+        .cctv-grid { flex: 3; display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
         
-        .cctv-box { background: #000; border-radius: 8px; border: 3px solid #333; overflow: hidden; position: relative; min-height: 400px; display: flex; align-items: center; justify-content: center; }
+        .cctv-box { background: #000; border-radius: 8px; border: 3px solid #3b3b54; overflow: hidden; position: relative; min-height: 400px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
         .cctv-box img { width: 100%; height: auto; display: none; }
-        .cctv-label { position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.7); padding: 5px 10px; border-radius: 4px; border: 1px solid red; color: red; font-weight: bold; font-size: 12px; }
-        .placeholder-text { color: #555; font-style: italic; }
+        .cctv-label { position: absolute; top: 12px; right: 12px; background: rgba(220, 53, 69, 0.85); padding: 5px 12px; border-radius: 4px; color: white; font-weight: bold; font-size: 12px; letter-spacing: 1px; box-shadow: 0 2px 4px rgba(0,0,0,0.5); z-index: 10; }
+        
+        .side-panel { flex: 1; display: flex; flex-direction: column; gap: 20px; min-width: 320px; }
+        .ticket-view { background: #fff8e1; color: #333; padding: 30px 20px; border-radius: 10px; border: 2px dashed #ffc107; min-height: 230px; text-align: center; box-shadow: inset 0 0 15px rgba(0,0,0,0.15), 0 4px 10px rgba(0,0,0,0.3); position: relative; }
+        .ticket-view::before, .ticket-view::after { content: ''; position: absolute; width: 20px; height: 20px; background: #1e1e2f; border-radius: 5px; top: 50%; }
+        .ticket-view::before { left: -11px; }
+        .ticket-view::after { right: -11px; }
+        
+        .placeholder-text { color: #555570; font-style: italic; font-size: 16px; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>🎛️ Pusat Kendali Multi-CCTV Smart Parking (YOLOv11)</h1>
-    <button class="btn-connect" onclick="hubungkanSemuaCCTV()">🔌 Aktifkan Semua Kamera Sistem</button>
+    <h1>🎛️ Sistem Monitoring Multi-CCTV & Gate Karcis Parkir</h1>
+    
+    <div class="top-bar">
+        <button class="btn-connect" onclick="hubungkanSemuaCCTV()">🔌 AKTIFKAN SEMUA KAMERA</button>
+        <button class="btn-ticket" onclick="requestCetakTiket()">🎫 CETAK TIKET MASUK</button>
+    </div>
 
-    <div class="cctv-grid">
-        <div class="cctv-box">
-            <span class="cctv-label">🔴 LIVE CH-01</span>
-            <span id="p1" class="placeholder-text">Kamera Utama Gate Masuk (Offline)</span>
-            <img id="cam1" alt="CCTV 1">
+    <div class="main-layout">
+        <div class="cctv-grid">
+            <div class="cctv-box">
+                <span class="cctv-label">🔴 LIVE AREA A</span>
+                <span id="p1" class="placeholder-text">Kamera Utama Gate Masuk (Offline)</span>
+                <img id="cam1" alt="CCTV Monitor 1">
+            </div>
+            <div class="cctv-box">
+                <span class="cctv-label">🔴 LIVE AREA B</span>
+                <span id="p2" class="placeholder-text">Kamera Cadangan Lantai 2 (Offline)</span>
+                <img id="cam2" alt="CCTV Monitor 2">
+            </div>
         </div>
 
-        <div class="cctv-box">
-            <span class="cctv-label">🔴 LIVE CH-02</span>
-            <span id="p2" class="placeholder-text">Kamera Cadangan Lantai 2 (Offline)</span>
-            <img id="cam2" alt="CCTV 2">
+        <div class="side-panel">
+            <div class="ticket-view" id="tiketResult">
+                <h3 style="color: #777; margin-top: 70px; font-weight: 500;">Menunggu Pemicu Sensor Gate...</h3>
+            </div>
         </div>
     </div>
 </div>
 
 <script>
-    // URL Tautan Permanen LocalTunnel Anda
+    // URL Link Publik LocalTunnel Anda yang Sudah Dikunci Permanen
     const baseUrl = "https://smart-parking-yolov11.loca.lt";
+    let isLive = false;
 
     function hubungkanSemuaCCTV() {
         const cam1 = document.getElementById('cam1');
         const cam2 = document.getElementById('cam2');
-        const p1 = document.getElementById('p1');
-        const p2 = document.getElementById('p2');
-
-        // Menembak ke masing-masing endpoint multi-feed di Colab
+        
+        // Membuka kedua endpoint streaming ganda dari Colab
         cam1.src = `${baseUrl}/video_feed/1`;
         cam2.src = `${baseUrl}/video_feed/2`;
 
         cam1.style.display = "block";
         cam2.style.display = "block";
-        p1.style.display = "none";
-        p2.style.display = "none";
+        document.getElementById('p1').style.display = "none";
+        document.getElementById('p2').style.display = "none";
+        isLive = true;
+    }
+
+    async function requestCetakTiket() {
+        if (!isLive) { alert("Nyalakan koneksi monitor CCTV terlebih dahulu!"); return; }
+        
+        const tiketContainer = document.getElementById('tiketResult');
+        tiketContainer.innerHTML = "<i style='display:block; margin-top:70px; color:#555;'>Menganalisis matriks spasial ruang kosong...</i>";
+
+        try {
+            // Tembak request ke endpoint cerdas pencari slot kosong terpusat
+            const response = await fetch(`${baseUrl}/cetak_tiket`, { method: "POST" });
+            const data = await response.json();
+
+            if (data.status === "penuh") {
+                tiketContainer.innerHTML = `<h2 style='color:#dc3545; margin-top:50px;'>🚨<br>MOHON MAAF<br>PARKIR PENUH!</h2>`;
+            } else {
+                const waktu = new Date().toLocaleTimeString();
+                tiketContainer.innerHTML = `
+                    <h3 style="margin: 0 0 5px 0; letter-spacing:2px; font-weight:800; color:#111;">🎫 STRUK KARCIS PARKIR</h3>
+                    <p style="margin: 2px 0; font-size:13px; color:#555;">Waktu: <b>${waktu}</b> | Gate: <b>UTAMA</b></p>
+                    <hr style="border-top: 2px dashed #444; margin: 15px 0;">
+                    <p style="margin: 0; font-size: 13px; color: #666; font-weight:600;">REKOMENDASI LOKASI BLOK KOSONG:</p>
+                    <h1 style="font-size: 60px; margin: 5px 0 0 0; color: #28a745; font-weight: 900; font-family: 'Courier New', Courier, monospace;">${data.slot}</h1>
+                    <p style="margin: 15px 0 0 0; font-size: 11px; color: #777;">Silakan parkir kendaraan Anda pada blok yang tertera di atas.</p>
+                `;
+            }
+        } catch (error) {
+            tiketContainer.innerHTML = `<p style='color:#dc3545; margin-top:60px;'><b>Koneksi Gagal.</b><br><small>Pastikan Anda sudah mengaktifkan izin 'Insecure Content' pada ikon gembok browser Anda.</small></p>`;
+        }
     }
 </script>
 
