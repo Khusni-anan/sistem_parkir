@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Pusat Kendali Multi-CCTV & Cetak Tiket</title>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f6f9; color: #333; margin: 0; padding: 20px; text-align: center; }
         .container { max-width: 1450px; margin: auto; background: #ffffff; padding: 25px; border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.08); }
@@ -10,11 +11,11 @@
         .top-bar { display: flex; gap: 15px; justify-content: center; margin-bottom: 25px; }
         button { padding: 12px 25px; font-size: 15px; font-weight: bold; cursor: pointer; border: none; border-radius: 6px; color: white; transition: 0.3s; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         .btn-setup { background-color: #17a2b8; }
-        .btn-setup:hover { background-color: #138496; }
+        .btn-setup:hover { background-color: #138496; transform: translateY(-2px); }
         .btn-connect { background-color: #28a745; }
-        .btn-connect:hover { background-color: #218838; }
+        .btn-connect:hover { background-color: #218838; transform: translateY(-2px); }
         .btn-ticket { background-color: #ffc107; color: #222; }
-        .btn-ticket:hover { background-color: #e0a800; }
+        .btn-ticket:hover { background-color: #e0a800; transform: translateY(-2px); }
         .btn-action { background-color: #dc3545; padding: 8px 15px; font-size: 13px;}
         
         /* Layout Utama */
@@ -25,13 +26,29 @@
         .cctv-label { position: absolute; top: 12px; right: 12px; background: rgba(220, 53, 69, 0.9); padding: 5px 12px; border-radius: 4px; color: white; font-weight: bold; font-size: 12px; z-index: 10; }
         
         .side-panel { flex: 1; display: flex; flex-direction: column; gap: 20px; min-width: 320px; }
-        .ticket-view { background: #fffdf5; color: #333; padding: 30px 20px; border-radius: 10px; border: 2px dashed #ffc107; min-height: 230px; text-align: center; }
+        .ticket-view { background: #fffdf5; color: #333; padding: 20px; border-radius: 10px; border: 2px dashed #ffc107; min-height: 230px; display: flex; justify-content: center; align-items: center; }
         
         /* SETUP ROI SECTION */
         #setup-section { display: none; background: #e9ecef; padding: 20px; border-radius: 8px; margin-bottom: 20px; text-align: left; }
         .canvas-container { position: relative; width: 100%; max-width: 800px; margin: 15px auto; border: 2px solid #333; aspect-ratio: 16/9; background-color: #000;}
         canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; cursor: crosshair; }
-        #reference-img { width: 100%; height: 100%; object-fit: cover; opacity: 0.7;}
+        #reference-img { width: 100%; height: 100%; object-fit: cover; opacity: 0.7; display: none;}
+        
+        /* --- GAYA STRUK THERMAL PARKIR --- */
+        .receipt-wrapper { display: flex; justify-content: center; align-items: center; width: 100%; }
+        .thermal-receipt { background-color: #fff; width: 100%; max-width: 280px; padding: 20px; box-shadow: 0 10px 20px rgba(0,0,0,0.15); font-family: 'Courier New', Courier, monospace; color: #000; text-align: left; position: relative; border: 1px solid #ddd; }
+        .thermal-receipt::after { content: ""; position: absolute; bottom: -10px; left: 0; width: 100%; height: 10px; background: linear-gradient(135deg, #fff 5px, transparent 5px), linear-gradient(-135deg, #fff 5px, transparent 5px); background-position: left bottom; background-repeat: repeat-x; background-size: 10px 10px; }
+        .receipt-header { text-align: center; margin-bottom: 15px; }
+        .receipt-header h2 { margin: 0; font-size: 20px; font-weight: 900; letter-spacing: 1px; }
+        .receipt-header p { margin: 5px 0 0 0; font-size: 11px; }
+        .receipt-divider { border-top: 2px dashed #000; margin: 12px 0; }
+        .receipt-details { font-size: 13px; line-height: 1.6; }
+        .receipt-slot { text-align: center; margin: 15px 0; border: 2px solid #000; padding: 10px; border-radius: 4px; }
+        .receipt-slot p { margin: 0 0 5px 0; font-size: 12px; font-weight: bold; }
+        .receipt-slot h1 { font-size: 55px; margin: 0; font-weight: 900; color: #28a745; }
+        .receipt-barcode { text-align: center; margin-top: 15px; }
+        .receipt-barcode svg { width: 100%; height: 60px; }
+        .receipt-footer { text-align: center; font-size: 10px; margin-top: 15px; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -82,13 +99,14 @@
 
         <div class="side-panel">
             <div class="ticket-view" id="tiketResult">
-                <h3 style="color: #777; margin-top: 70px; font-weight: 500;">Menunggu Pemicu Sensor Gate...</h3>
+                <h3 style="color: #777; font-weight: 500; margin: 0;">Menunggu Pemicu Sensor Gate...</h3>
             </div>
         </div>
     </div>
 </div>
 
 <script>
+    // ⚠️ URL Ngrok 
     const baseUrl = "https://racism-displace-mushiness.ngrok-free.dev";
     let isLive = false;
 
@@ -102,6 +120,7 @@
         const cam1 = document.getElementById('cam1');
         const cam2 = document.getElementById('cam2');
         
+        // Membuka stream video dari Colab
         cam1.src = `${baseUrl}/video_feed/1`;
         cam2.src = `${baseUrl}/video_feed/2`;
         cam1.style.display = "block";
@@ -111,16 +130,65 @@
 
     async function requestCetakTiket() {
         if (!isLive) { alert("Nyalakan koneksi monitor CCTV terlebih dahulu!"); return; }
-        const tiketContainer = document.getElementById('tiketResult');
-        tiketContainer.innerHTML = "<i style='display:block; margin-top:70px; color:#777;'>Menganalisis matriks...</i>";
         
+        const tiketContainer = document.getElementById('tiketResult');
+        tiketContainer.innerHTML = "<i style='color:#777;'>Memproses tiket & mencari slot kosong...</i>";
+
         try {
             const response = await fetch(`${baseUrl}/cetak_tiket`, { method: "POST" });
             const data = await response.json();
-            // ... (Logika cetak tiket Anda tidak saya ubah, anggap saja berhasil)
-            tiketContainer.innerHTML = `<h1 style="color: green; margin-top: 50px;">Slot: ${data.slot}</h1>`;
+
+            if (data.status === "penuh") {
+                tiketContainer.innerHTML = `<h2 style='color:#dc3545; text-align:center;'>🚨<br>MOHON MAAF<br>PARKIR PENUH!</h2>`;
+            } else {
+                const now = new Date();
+                const tgl = now.toLocaleDateString('id-ID');
+                const jam = now.toLocaleTimeString('id-ID');
+                const randomID = Math.floor(1000 + Math.random() * 9000);
+                const ticketID = `PK-${now.getFullYear()}-${randomID}`;
+
+                tiketContainer.innerHTML = `
+                    <div class="receipt-wrapper">
+                        <div class="thermal-receipt">
+                            <div class="receipt-header">
+                                <h2>SMART PARKING</h2>
+                                <p>Jl. Teknologi Informatika No. 1</p>
+                            </div>
+                            <div class="receipt-divider"></div>
+                            <div class="receipt-details">
+                                <div><b>No Tiket :</b> ${ticketID}</div>
+                                <div><b>Tanggal  :</b> ${tgl}</div>
+                                <div><b>Jam Masuk:</b> ${jam} WIB</div>
+                                <div><b>Gate     :</b> UTAMA-01</div>
+                            </div>
+                            <div class="receipt-divider"></div>
+                            <div class="receipt-slot">
+                                <p>LOKASI PARKIR ANDA:</p>
+                                <h1>${data.slot}</h1>
+                            </div>
+                            <div class="receipt-barcode">
+                                <svg id="barcode"></svg>
+                            </div>
+                            <div class="receipt-footer">
+                                <p>JANGAN TINGGALKAN TIKET<br>DAN BARANG BERHARGA DI KENDARAAN</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                // Render Barcode
+                JsBarcode("#barcode", ticketID, {
+                    format: "CODE128",
+                    lineColor: "#000",
+                    width: 2,
+                    height: 40,
+                    displayValue: true,
+                    fontSize: 14,
+                    fontOptions: "bold"
+                });
+            }
         } catch (error) {
-            tiketContainer.innerHTML = `<p style='color:#dc3545;'><b>Koneksi Gagal.</b></p>`;
+            tiketContainer.innerHTML = `<p style='color:#dc3545; text-align:center;'><b>Koneksi Gagal.</b><br><small>Pastikan Colab & Ngrok berjalan.</small></p>`;
         }
     }
 
@@ -145,19 +213,15 @@
         }
     }
 
-    // Load 1 frame statis dari API backend untuk dijadikan latar belakang menggambar
     function loadFrameCamera() {
         const camId = document.getElementById('kamera-select').value;
         const imgRef = document.getElementById('reference-img');
-        // Anggap backend Anda punya endpoint untuk mengembalikan 1 gambar jpg
         imgRef.src = `${baseUrl}/get_frame/${camId}?t=${new Date().getTime()}`; 
         imgRef.style.display = 'block';
-        clearAllPolygons(); // Reset jika pindah kamera
+        clearAllPolygons(); 
     }
 
-    // Event ketika canvas diklik
     canvas.addEventListener('mousedown', function(e) {
-        // Hitung skala rasio karena tampilan canvas di browser berbeda dengan ukuran asli (1280x720)
         const rect = canvas.getBoundingClientRect();
         const scaleX = canvas.width / rect.width;
         const scaleY = canvas.height / rect.height;
@@ -167,7 +231,6 @@
 
         currentPoints.push([x, y]);
 
-        // Jika sudah klik 4 titik, simpan menjadi 1 slot utuh
         if (currentPoints.length === 4) {
             savedSlots.push([...currentPoints]);
             currentPoints = [];
@@ -179,7 +242,6 @@
         if (currentPoints.length > 0) {
             currentPoints.pop();
         } else if (savedSlots.length > 0) {
-            // Jika current points kosong, hapus slot utuh yang terakhir dibuat
             savedSlots.pop(); 
         }
         redrawCanvas();
@@ -194,7 +256,6 @@
     function redrawCanvas() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // Gambar slot yang sudah selesai (Hijau transparan)
         savedSlots.forEach(slot => {
             ctx.beginPath();
             ctx.moveTo(slot[0][0], slot[0][1]);
@@ -209,7 +270,6 @@
             ctx.stroke();
         });
 
-        // Gambar titik dan garis yang sedang dibuat (Merah)
         if (currentPoints.length > 0) {
             ctx.beginPath();
             ctx.moveTo(currentPoints[0][0], currentPoints[0][1]);
@@ -229,7 +289,6 @@
         }
     }
 
-    // Mengirim koordinat ke Backend (Python/Colab)
     async function simpanROIKeserver() {
         if (savedSlots.length === 0) {
             alert("Anda belum membuat kotak parkir satupun!");
@@ -239,7 +298,7 @@
         const camId = document.getElementById('kamera-select').value;
         const payload = {
             camera_id: camId,
-            rois: savedSlots // Array berupa [ [[x,y], [x,y], [x,y], [x,y]], [...] ]
+            rois: savedSlots
         };
 
         try {
